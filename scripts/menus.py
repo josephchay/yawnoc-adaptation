@@ -194,14 +194,15 @@ class Menus(pp.ElementSingleton):
     def exit_callback(self, result):
         if result:
             self.wishlisted = True
-            self.e['Steamworks'].open_store_page()
+            # self.e['Steamworks'].open_store_page()
         else:
             pygame.quit()
             sys.exit()
 
     def demo_win_callback(self, result):
         if result:
-            self.e['Steamworks'].open_store_page()
+            # self.e['Steamworks'].open_store_page()
+            pass
         self.wishlisted = True
 
     def render(self):
@@ -627,7 +628,7 @@ class Menus(pp.ElementSingleton):
                                 self.next_menu = 'settings'
                                 self.e['Sounds'].play('tap')
                             if option == 'Wishlist':
-                                self.e['Steamworks'].open_store_page()
+                                # self.e['Steamworks'].open_store_page()
                                 self.wishlisted = True
                             if option == 'Catalog':
                                 self.next_menu = 'catalog'

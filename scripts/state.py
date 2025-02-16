@@ -227,12 +227,12 @@ class State(pp.ElementSingleton):
                 self.save()
             if category == 'weapons':
                 if len(self.catalog[category]) >= len(WEAPON_STATS):
-                    self.e['Steamworks'].grant_achievement('gun_hunter')
+                    pass
             if category == 'upgrades':
                 if len(self.catalog[category]) >= len(UPGRADE_LIST):
-                    self.e['Steamworks'].grant_achievement('upgrade_hunter')
+                    pass
             if self.catalog_completed:
-                self.e['Steamworks'].grant_achievement('completionist')
+                    pass
 
     @property
     def catalog_completed(self):
@@ -474,7 +474,8 @@ class State(pp.ElementSingleton):
             self.save()
 
         if self.record >= 10:
-            self.e['Steamworks'].grant_achievement('time_flies')
+            # self.e['Steamworks'].grant_achievement('time_flies')
+            pass
 
         self.upgrade_db.compute_weights()
         for i, shop in enumerate(self.e['Tilemap'].shops):

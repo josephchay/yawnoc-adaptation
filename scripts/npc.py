@@ -123,7 +123,7 @@ class NPC(Entity):
         
         if self.type == 'goat':
             self.e['Game'].player.play_from('goat', self.center, volume=0.8)
-            self.e['Steamworks'].grant_achievement('father')
+            # self.e['Steamworks'].grant_achievement('father')
 
     def update(self, dt):
         super().update(dt)

@@ -74,7 +74,8 @@ class Frenemy(PhysicsEntity):
         self.camping = self.e['State'].shopping != 0
 
         if self.camping and (self.type == 'hazel'):
-            self.e['Steamworks'].grant_achievement('friends')
+            # self.e['Steamworks'].grant_achievement('friends')
+            pass
 
         self.friendly = self.camping
         self.alt_weapon = None

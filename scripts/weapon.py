@@ -69,9 +69,11 @@ class Weapon(pp.Element):
         self.save_enchants()
 
         if self.star_rating[0] == 'silver':
-            self.e['Steamworks'].grant_achievement('silver_enchanter')
+            # self.e['Steamworks'].grant_achievement('silver_enchanter')
+            pass
         if self.star_rating[0] == 'gold':
-            self.e['Steamworks'].grant_achievement('golden_enchanter')
+            # self.e['Steamworks'].grant_achievement('golden_enchanter')
+            pass
 
     def strip(self):
         # weight, level

@@ -273,13 +273,13 @@ class Machine:
 
             if self.type not in FRIENDLY_MACHINES:
                 self.parent.e['State'].catalog_log('machines', self.type)
-                total_destroys = self.parent.e['Steamworks'].increment_stat('kills', 1)
-                if total_destroys >= 1000:
-                    self.parent.e['Steamworks'].grant_achievement('hole_puncher')
-                if total_destroys >= 10000:
-                    self.parent.e['Steamworks'].grant_achievement('hole_puncher_ii')
-                if total_destroys >= 100000:
-                    self.parent.e['Steamworks'].grant_achievement('hole_puncher_iii')
+                # total_destroys = self.parent.e['Steamworks'].increment_stat('kills', 1)
+                # if total_destroys >= 1000:
+                #     self.parent.e['Steamworks'].grant_achievement('hole_puncher')
+                # if total_destroys >= 10000:
+                #     self.parent.e['Steamworks'].grant_achievement('hole_puncher_ii')
+                # if total_destroys >= 100000:
+                #     self.parent.e['Steamworks'].grant_achievement('hole_puncher_iii')
                 self.parent.e['State'].log_kill()
 
     def has_effect(self, effect_id):
@@ -311,8 +311,9 @@ class Machine:
             damage *= (src_weapon.enchant_stat('fmj') + 1)
 
         if damage >= 50:
-            self.parent.e['Steamworks'].grant_achievement('x50')
-        
+            # self.parent.e['Steamworks'].grant_achievement('x50')
+            pass
+
         old_health = self.health
         self.parent.e['Game'].player.process_damage_applied(self, damage)
         self.health = max(0, self.health - damage)
@@ -707,7 +708,7 @@ class Machines(pp.ElementSingleton):
                 self.place_spawn('chest', machine_type='stump')
 
     def end_wave(self):
-        self.e['Steamworks'].store_stats()
+        # self.e['Steamworks'].store_stats()
         self.active = False
         self.ghost_machine_map = {}
         if (self.e['State'].wave - 1) % 40 == 39:

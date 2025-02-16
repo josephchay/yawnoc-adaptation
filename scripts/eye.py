@@ -87,7 +87,7 @@ class Eye(pp.ElementSingleton):
             damage *= (src_weapon.enchant_stat('fmj') + 1)
 
         if damage >= 50:
-            self.e['Steamworks'].grant_achievement('x50')
+            pass
 
         self.e['Game'].player.process_damage_applied(self, damage)
 
@@ -161,13 +161,16 @@ class Eye(pp.ElementSingleton):
             self.e['Music'].fadeout(0.5)
             self.e['State'].catalog_log('machines', 'eye')
             if self.e['State'].difficulty_set == Difficulties.EXTRAHARD:
-                self.e['Steamworks'].grant_achievement('victory_iii')
+                # self.e['Steamworks'].grant_achievement('victory_iii')
+                pass
             elif self.e['State'].difficulty_set == Difficulties.HARD:
-                self.e['Steamworks'].grant_achievement('victory_ii')
-            self.e['Steamworks'].grant_achievement('victory')
+                # self.e['Steamworks'].grant_achievement('victory_ii')
+                pass
+            # self.e['Steamworks'].grant_achievement('victory')
             if not self.e['Game'].player.damaged_in_wave:
-                self.e['Steamworks'].grant_achievement('not_a_scratch')
-            self.e['Steamworks'].store_stats()
+                # self.e['Steamworks'].grant_achievement('not_a_scratch')
+                pass
+            # self.e['Steamworks'].store_stats()
 
     def update(self, dt):
         self.kb_stack = []
