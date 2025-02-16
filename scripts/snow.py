@@ -34,7 +34,7 @@ class Snow(pp.ElementSingleton):
         if season in {'winter', 'fall'}:
             for i, particle in enumerate(self.snow):
                 if season == 'winter':
-                    self.e['Game'].display.set_at(((particle[0] - self.e['Game'].camera[0]) % self.e['Game'].display.get_width(), (particle[1] - particle[2] - self.e['Game'].camera[1]) % int(self.e['Game'].display.get_height() * 1.5)), (254, 252, 211))
+                    self.e['Game'].display.set_at((int(particle[0] - self.e['Game'].camera[0]) % self.e['Game'].display.get_width(), int(particle[1] - particle[2] - self.e['Game'].camera[1]) % int(self.e['Game'].display.get_height() * 1.5)), (254, 252, 211))
                 elif season == 'fall':
                     type_offset = 5 if i % 2 else 0
                     self.e['Game'].display.blit(self.e['Assets'].images['leaf'][str(particle[4] + type_offset)], ((particle[0] - self.e['Game'].camera[0]) % self.e['Game'].display.get_width(), (particle[1] - particle[2] - self.e['Game'].camera[1]) % int(self.e['Game'].display.get_height() * 1.5)))

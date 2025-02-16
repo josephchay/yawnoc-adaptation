@@ -39,9 +39,7 @@ void main() {
         for (int y = -1; y <= 1; y++) {
             if ((x != 0) || (y != 0)) {
                 vec4 neighbor = lookup_texel(surface, ivec2(uv_px.x + x, uv_px.y + y));
-                if ((neighbor.r > 0) && (neighbor.r < 254.0 / 255.0)) {
-                    neighbor_type = 0.9;
-                    
+                if ((neighbor.r > 0) && (neighbor.r < 251.0 / 255.0)) {
                     neighbors++;
                 }
                 neighbor_max++;
@@ -51,12 +49,15 @@ void main() {
 
     int wide_neighbors = 0;
     int wide_neighbor_max = 0;
-    for (int x = -12; x <= 12; x++) {
-        for (int y = -12; y <= 12; y++) {
-            if (((x != 0) || (y != 0)) && (distance(vec2(x, y), vec2(0, 0)) < 12.0)) {
+    for (int x = -4; x <= 4; x++) {
+        for (int y = -4; y <= 4; y++) {
+            if (((x != 0) || (y != 0)) && (distance(vec2(x, y), vec2(0, 0)) < 4.0)) {
                 vec4 neighbor = lookup_texel(surface, ivec2(uv_px.x + x, uv_px.y + y));
-                if ((neighbor.r > 0) && (neighbor.r < 254.0 / 255.0)) {
-                    neighbor_type = 0.9;
+                if ((neighbor.r > 0) && (neighbor.r < 251.0 / 255.0)) {
+                    // "randomly" pick the neighbor type to source from using an in-place overwriting technique
+                    if (mod(uv_px.x, neighbors + 1) == 0) {
+                        neighbor_type = neighbor.r;
+                    }
                     
                     wide_neighbors++;
                 }
@@ -69,9 +70,9 @@ void main() {
     float wide_neighbor_r = (wide_neighbors * 1.0) / wide_neighbor_max;
 
     if ((neighbor_r >= 0.5) && (wide_neighbor_r >= 0.26) && (wide_neighbor_r <= 0.46)) {
-        f_color = vec4(neighbor_type, neighbor_r, wide_neighbor_r, 1.0);
+        f_color = vec4(neighbor_type, neighbor_type, neighbor_type, 1.0);
     } else if ((neighbor_r <= 0.5) && (wide_neighbor_r >= 0.27) && (wide_neighbor_r <= 0.36)) {
-        f_color = vec4(neighbor_type, neighbor_r, wide_neighbor_r, 1.0);
+        f_color = vec4(neighbor_type, neighbor_type, neighbor_type, 1.0);
     } else {
         f_color = vec4(0.0, 0.0, 0.0, 1.0);
     }

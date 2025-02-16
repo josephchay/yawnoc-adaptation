@@ -62,10 +62,16 @@ class Transition(pp.ElementSingleton):
     @property
     def progress(self):
         return self.transition_timer * 2
+    
+    @property
+    def floor_hole_radius(self):
+        if self.level_end:
+            return min(self.level_end, 0.5) * 64
+        return 0
 
     def render(self):
         if self.level_end:
-            self.e['Renderer'].renderf(pygame.draw.circle, (38, 27, 46), (self.e['Game'].player.center[0] - self.e['Game'].camera[0], self.e['Game'].player.center[1] - self.e['Game'].camera[1]), min(self.level_end, 0.5) * 64, group='default', z=self.e['Game'].player.z - 0.01)
+            self.e['Renderer'].renderf(pygame.draw.circle, (38, 27, 46), (self.e['Game'].player.center[0] - self.e['Game'].camera[0], self.e['Game'].player.center[1] - self.e['Game'].camera[1]), self.floor_hole_radius, group='default', z=self.e['Game'].player.z - 0.01)
 
         if self.progress:
             if self.inverted:

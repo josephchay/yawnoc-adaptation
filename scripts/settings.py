@@ -3,9 +3,12 @@ import os
 import socket
 import platform
 
+import pygame
+
 from scripts import pygpen as pp
 
 from .util import CONTROLLER_MAPPING_SWAPPED, CONTROLLER_MAPPING
+from .const import DEFAULT_SAVE, SETTINGS
 
 DEFAULT_SETTINGS = {
     'fps_cap': '165',
@@ -20,6 +23,15 @@ DEFAULT_SETTINGS = {
     'swap_trigger_bumper': 'disabled',
     'pink_player': 'disabled',
     'saturation': '100%',
+    'screenshake': 'enabled',
+    'crt_effect': '100%',
+    'camera_slack': 'enabled',
+    'camera_mouse_influence': '50%',
+    'machine_outline': 'disabled',
+    'bullet_outline': 'disabled',
+    'grass': 'enabled',
+    'trees': 'breezy',
+    'ability_cooldowns': 'hud',
 }
 
 class Settings(pp.ElementSingleton):
@@ -33,17 +45,24 @@ class Settings(pp.ElementSingleton):
             os.mkdir('settings')
         
         if not os.path.exists('save/save.json'):
-            default_save = {
-                'best_score': 0,
-                'weapon_enchants': {},
-            }
+            pp.utils.io.write_json('save/save.json', DEFAULT_SAVE)
 
-            pp.utils.io.write_json('save/save.json', default_save)
-
+        max_display_size = (pygame.display.Info().current_w, pygame.display.Info().current_h)
+        for option in list(SETTINGS['windowed_resolution']['options']):
+            if 'x' in option:
+                if int(option.split('x')[0]) > max_display_size[0]:
+                    SETTINGS['windowed_resolution']['options'].remove(option)
+                    print('removed oversized resolution option:', option)
+                elif int(option.split('x')[1]) > max_display_size[1]:
+                    SETTINGS['windowed_resolution']['options'].remove(option)
+                    print('removed oversized resolution option:', option)
+                    
         try:
             self.settings_save = pp.utils.io.read_json('settings/settings.json')
             for field in DEFAULT_SETTINGS:
                 if field not in self.settings_save:
+                    self.settings_save[field] = DEFAULT_SETTINGS[field]
+                elif self.settings_save[field] not in SETTINGS[field]['options']:
                     self.settings_save[field] = DEFAULT_SETTINGS[field]
         except FileNotFoundError:
             initial_resolution = 'native'
@@ -81,8 +100,48 @@ class Settings(pp.ElementSingleton):
         return int(self.settings_save['saturation'][:-1]) * 0.01
     
     @property
+    def crt_effect(self):
+        return int(self.settings_save['crt_effect'][:-1]) * 0.01
+
+    @property
+    def grass_visible(self):
+        return self.settings_save['grass'] != 'disabled'
+    
+    @property
+    def grass_breeze(self):
+        return self.settings_save['grass'] == 'enabled'
+    
+    @property
+    def tree_breeze(self):
+        return self.settings_save['trees'] != 'no breeze'
+    
+    @property
     def fullscreen(self):
         return self.settings_save['fullscreen'] == 'enabled'
+
+    @property
+    def camera_slack(self):
+        return self.settings_save['camera_slack'] == 'enabled'
+    
+    @property
+    def machine_outline(self):
+        return self.settings_save['machine_outline'] == 'enabled'
+
+    @property
+    def bullet_outline(self):
+        return self.settings_save['bullet_outline'] == 'enabled'
+    
+    @property
+    def camera_mouse_influence(self):
+        return int(self.settings_save['camera_mouse_influence'][:-1]) * 0.01
+    
+    @property
+    def screenshake(self):
+        return self.settings_save['screenshake'] == 'enabled'
+    
+    @property
+    def player_cooldowns(self):
+        return self.settings_save['ability_cooldowns'] == 'player & hud'
     
     @property
     def aim_assist(self):
@@ -95,9 +154,10 @@ class Settings(pp.ElementSingleton):
         except ValueError:
             return None
     
-    def update(self, field, value):
+    def update(self, field, value, save=True):
         self.settings_save[field] = value
-        self.save()
+        if save:
+            self.save()
 
         if field == 'swap_trigger_bumper':
             self.e['Controllers'].update_mappings(CONTROLLER_MAPPING_SWAPPED if value == 'enabled' else CONTROLLER_MAPPING)

@@ -3,7 +3,7 @@ import random
 
 import pygame
 
-from ..utils.elements import ElementSingleton
+from ..utils.elements import ElementSingleton, elems
 from .particles import Particle
 
 def extract_color(img, color, add_surf=None):
@@ -101,12 +101,13 @@ class AnimatedFoliage:
 
     def render(self, surf, pos, m_clock=0, seed=14, opacity=255):
         if opacity:
-            surf.blit(pygame.transform.rotate(self.apply_alpha(self.layers[0], opacity), math.sin(m_clock * 0.8 + (2.7 * seed)) * 1.2), (pos[0] + math.sin(m_clock * 1.7 + (2.7 * seed)) * 1.5 * self.motion_scale, pos[1] + math.sin(m_clock + (2.2 * seed)) * self.motion_scale))
+            if elems['Settings'].tree_breeze:
+                surf.blit(pygame.transform.rotate(self.apply_alpha(self.layers[0], opacity), math.sin(m_clock * 0.8 + (2.7 * seed)) * 1.2), (pos[0] + math.sin(m_clock * 1.7 + (2.7 * seed)) * 1.5 * self.motion_scale, pos[1] + math.sin(m_clock + (2.2 * seed)) * self.motion_scale))
             surf.blit(self.apply_alpha(self.base_image, opacity), pos)
 
             for i, layer in enumerate(self.layers):
-                if i != 0:
-                    layer_img = pygame.transform.rotate(layer, math.sin(m_clock * 1.1) * 4.5)
+                if (i != 0) and elems['Settings'].tree_breeze:
+                    layer_img = pygame.transform.rotate(layer, math.sin(m_clock * 1.1 + (2.55 * seed)) * 4.5)
                     offset = ((layer_img.get_width() - layer.get_width()) // 2, (layer_img.get_height() - layer.get_height()) // 2)                  
                     surf.blit(self.apply_alpha(layer_img, opacity), (pos[0] + math.sin(m_clock * (1.25 * i) + (2.7 * seed)) * 1.5 * self.motion_scale - offset[0], pos[1] + math.sin(m_clock * (1.25 * i) + (2.2 * seed)) * self.motion_scale - offset[1]))
                 else:

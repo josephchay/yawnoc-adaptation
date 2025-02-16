@@ -23,12 +23,23 @@ try:
     from scripts.settings import Settings
     from scripts.music import Music
     from scripts.aim_assist import AimAssist
-    from scripts.setup import generate_shadow_anims
+    from scripts.presence import Presence
+    from scripts.input_tips import InputTips
+    from scripts.blood_bg import BloodBG
+    from scripts.visibility_markers import VisibilityMarkers
+    from scripts.setup import generate_shadow_anims, prep_assets
     from scripts.util import CONTROLLER_MAPPING, CONTROLLER_MAPPING_SWAPPED
+
+    # force packaging to recognize glcontext
+    import glcontext
 
     class Game(pp.PygpenGame):
         def load(self):
             base_resolution = (384, 216)
+
+            # moved this out of the Window object so that it can be done before settings are loaded
+            pygame.mixer.pre_init(channels=2, allowedchanges=pygame.AUDIO_ALLOW_FREQUENCY_CHANGE)
+            pygame.init()
 
             self.settings = Settings()
 
@@ -84,41 +95,31 @@ try:
             self.e['Assets'].load_folder('data/images/partner_icons', colorkey=(0, 0, 0))
             self.e['Assets'].load_folder('data/images/projectiles', colorkey=(0, 0, 0))
             self.e['Assets'].load_folder('data/images/leaf', colorkey=(0, 0, 0))
+            self.e['Assets'].load_folder('data/images/difficulties', colorkey=(0, 0, 0))
+            self.e['Assets'].load_folder('data/images/input_tips', colorkey=(0, 0, 0))
 
-            # the stump is the only machine with an alpha
-            self.e['Assets'].images['machines']['stump'] = pygame.image.load('data/images/machines/stump.png').convert_alpha()
+            pygame.display.set_icon(self.e['Assets'].images['misc']['icon'])
 
             self.noise_tex = self.e['MGL'].pg2tx(self.e['Assets'].images['misc']['noise'])
             self.noise_tex.repeat_x = True
             self.noise_tex.repeat_y = True
+            self.static_noise_tex = self.e['MGL'].pg2tx(self.e['Assets'].images['misc']['static_noise'])
+            self.static_noise_tex.repeat_x = True
+            self.static_noise_tex.repeat_y = True
+            self.crt_filter_tex = self.e['MGL'].pg2tx(self.e['Assets'].images['misc']['crt_filter'])
+            self.crt_filter_tex.repeat_x = True
+            self.crt_filter_tex.repeat_y = True
 
-            self.e['Assets'].images['misc']['full_fade'] = pygame.transform.scale(pygame.image.load('data/images/misc/fade.png').convert_alpha(), (100, self.display.get_height()))
+            self.cracks = [self.e['MGL'].pg2tx(self.e['Assets'].images['misc'][f'crack_{i}']) for i in range(3)]
+            for crack in self.cracks:
+                crack.repeat_x = True
+                crack.repeat_y = True
+            self.crack_img = self.cracks[0]
 
-            self.e['Assets'].images['misc']['shadow_small'].set_alpha(100)
-            self.e['Assets'].images['misc']['shadow_medium'].set_alpha(100)
-            self.e['Assets'].images['misc']['shadow_tiny'].set_alpha(100)
-
-            BULLET_COLOR_LIST = ['red', 'blue', 'brown']
-
-            self.e['Assets'].bullets = {color: [] for color in BULLET_COLOR_LIST}
-
-            bullet_core = self.e['Assets'].images['misc']['bullet_core']
-            for i in range(360):
-                rotated_core = pygame.transform.rotate(bullet_core, i)
-                bullet_border_colors = [pygame.transform.rotate(self.e['Assets'].images['misc'][f'bullet_{color}'], i) for color in BULLET_COLOR_LIST]
-                for img in bullet_border_colors:
-                    img.set_colorkey((0, 0, 0))
-                rotated_core.set_colorkey((0, 0, 0))
-                bullet_colors = [pygame.Surface((rotated_core.get_width() + 2, rotated_core.get_height() + 2)) for i in range(len(bullet_border_colors))]
-                for offset in [(1, 0), (-1, 0), (0, 1), (0, -1)]:
-                    for i, img in enumerate(bullet_colors):
-                        img.blit(bullet_border_colors[i], (1 + offset[0], 1 + offset[1]))
-                for i, img in enumerate(bullet_colors):
-                    img.blit(rotated_core, (1, 1))
-                    img.set_colorkey((0, 0, 0))
-                    self.e['Assets'].bullets[BULLET_COLOR_LIST[i]].append(img)
+            prep_assets(self.e['Assets'])
 
             self.menus = Menus()
+            self.visibility_markers = VisibilityMarkers()
             self.tilemap = Tilemap()
             self.hlmap = HighlifeMap()
 
@@ -133,7 +134,11 @@ try:
 
             self.transition = Transition()
             self.hud = HUD()
+            self.input_tips = InputTips()
             self.snow = Snow()
+            self.bloodbg = BloodBG()
+
+            self.presence = Presence()
 
             self.mpos = (0, 0)
 
@@ -159,6 +164,16 @@ try:
             self.player.max_health = 5.2
             self.player.health = self.player.max_health
             self.e['Transition'].direction = -1
+            self.e['PauseMenu'].death_consumed = False
+        
+        def restart_retry(self):
+            self.restart()
+
+            self.e['Input'].consume('shoot')
+            self.e['Controllers'].consume('interact')
+
+            self.e['Menus'].submenu = 'weapon_select'
+            self.e['Menus'].next_menu = None
 
         def handle_controller_switch(self):
             if self.controller_mode:
@@ -167,13 +182,16 @@ try:
             else:
                 if any([self.e['Controllers'].pressed(key) or self.e['Controllers'].pressed_neg(key) for key in ['move_x', 'move_y', 'aim_x', 'aim_y']]):
                     self.controller_mode = True
+                if any([self.e['Controllers'].pressed(key) for key in ['menu_right', 'menu_left', 'menu_up', 'menu_down']]):
+                    self.controller_mode = True
 
         def update(self):
             self.hud_surf.fill((0, 0, 0, 0))
-            if not self.machines.high_life:
-                self.display.fill((0, 0, 0, 0))
-            else:
-                self.display.fill((38, 27, 46))
+            self.display.fill((0, 0, 0, 0))
+
+            self.e['Sounds'].update()
+
+            self.crack_img = self.cracks[0]
 
             dt_scale = 1
             for freeze in self.freeze_stack[::-1]:
@@ -181,6 +199,9 @@ try:
                 freeze[1] = max(0, freeze[1] - self.e['Window'].dt)
                 if not freeze[1]:
                     self.freeze_stack.remove(freeze)
+            
+            if self.e['State'].effect_active('slow_motion'):
+                dt_scale *= 0.65
 
             self.e['Window'].dt = min(self.e['Window'].dt * dt_scale, 0.1)
 
@@ -194,7 +215,16 @@ try:
                     self.controller_aim_offset = aim_offset.copy()
                 self.mpos = (self.e['Game'].player.center[0] + self.controller_aim_offset[0] - self.camera[0], self.e['Game'].player.center[1] + self.controller_aim_offset[1] - self.camera[1])
             else:
-                self.mpos = (self.e['Mouse'].pos[0] * (self.e['Game'].display.get_width() / self.e['Window'].dimensions[0]), self.e['Mouse'].pos[1] * (self.e['Game'].display.get_height() / self.e['Window'].dimensions[1]))
+                window_aspect = self.e['Window'].dimensions[0] / self.e['Window'].dimensions[1]
+                intended_aspect = 16 / 9
+                if window_aspect >= intended_aspect:
+                    playable_area = pygame.Rect(0, 0, self.e['Window'].dimensions[1] * intended_aspect, self.e['Window'].dimensions[1])
+                else:
+                    playable_area = pygame.Rect(0, 0, self.e['Window'].dimensions[0], self.e['Window'].dimensions[0] / intended_aspect)
+                playable_area.x = (self.e['Window'].dimensions[0] - playable_area.width) / 2
+                playable_area.y = (self.e['Window'].dimensions[1] - playable_area.height) / 2
+                relative_mpos = ((self.e['Mouse'].pos[0] - playable_area.x) / playable_area.width, (self.e['Mouse'].pos[1] - playable_area.y) / playable_area.height)
+                self.mpos = (relative_mpos[0] * self.e['Game'].display.get_width(), relative_mpos[1] * self.e['Game'].display.get_height())
 
             # clear aim assist log after handling aim but before other entities would fill it again
             self.machines.machines_in_range = []
@@ -226,7 +256,10 @@ try:
                 self.tilemap.update()
             self.tilemap.render()
             if not self.machines.high_life:
-                self.e['Renderer'].renderf(self.gm.update_render, self.e['Window'].dt, offset=self.camera, rot_function=lambda x, y: int((math.sin(x / 100 + time.time() * 1.5) - 0.7) * 30) / 10, z=-5, ignore_tiles=set(self.machines.machine_map))
+                if self.e['Settings'].grass_breeze:
+                    self.e['Renderer'].renderf(self.gm.update_render, self.e['Window'].dt, offset=self.camera, rot_function=lambda x, y: int((math.sin(x / 100 + time.time() * 1.5) - 0.7) * 30) / 10, z=-5, ignore_tiles=set(self.machines.machine_map))
+                elif self.e['Settings'].grass_visible:
+                    self.e['Renderer'].renderf(self.gm.update_render, self.e['Window'].dt, offset=self.camera, rot_function=lambda x, y: 0, z=-5, ignore_tiles=set(self.machines.machine_map))
             else:
                 self.hlmap.render()
 
@@ -234,17 +267,6 @@ try:
 
             self.transition.update()
             self.transition.render()
-
-            if (not self.player.moved) and (not self.state.title):
-                tutorial_img = self.e['Assets'].images['misc']['tutorial']
-                if self.e['Window'].time % 1 < 0.7:
-                    self.e['Renderer'].blit(tutorial_img, (self.display.get_width() / 2 - tutorial_img.get_width() / 2, self.display.get_height() / 2 - tutorial_img.get_height() / 2 + 50), z=9998, group='ui')
-                else:
-                    self.e['Renderer'].blit(tutorial_img, (self.display.get_width() / 2 - tutorial_img.get_width() / 2, self.display.get_height() / 2 - tutorial_img.get_height() / 2 + 51), z=9998, group='ui')
-
-            if self.player.dead:
-                if self.e['Input'].pressed('restart') or self.e['Controllers'].pressed('interact'):
-                    self.restart()
 
             self.hud.update()
             self.hud.render()
@@ -262,7 +284,16 @@ try:
                 'scroll': self.camera.int_pos,
                 'border_discard': self.e['Window'].border_discard,
                 'saturation': self.e['Settings'].saturation,
+                'in_void': int(bool(self.machines.high_life) or (self.e['State'].season == 'void')),
+                'static_noise_tex': self.static_noise_tex,
+                'crt_filter_tex': self.crt_filter_tex,
+                'dimensions': self.e['Window'].dimensions,
+                'crt_effect': self.e['Settings'].crt_effect,
+                'crack_tex': self.crack_img,
+                'power_off': max(0, min(1, (self.e['PauseMenu'].victory - 6) * 2))
             })
+
+            self.presence.update()
             
     Game().run()
 

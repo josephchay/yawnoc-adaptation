@@ -201,7 +201,7 @@ class GrassAssets:
 
         # load in blade images
         for blade in sorted(os.listdir(path)):
-            img = pygame.image.load(path + '/' + blade).convert()
+            img = pygame.image.load(path + '/' + blade).convert_alpha()
             img.set_colorkey((0, 0, 0))
             self.blades.append(img)
 
@@ -210,10 +210,10 @@ class GrassAssets:
         rot_img = pygame.transform.rotate(self.blades[blade_id], rotation)
 
         # shade the blade of grass based on its rotation
-        shade = pygame.Surface(rot_img.get_size())
-        shade_amt = self.gm.shade_amount * (abs(rotation) / 90)
-        shade.set_alpha(shade_amt)
-        rot_img.blit(shade, (0, 0))
+        shade = pygame.Surface(rot_img.get_size(), pygame.SRCALPHA)
+        shade_amt = 255 - (self.gm.shade_amount * (abs(rotation) / 90))
+        shade.fill((shade_amt, shade_amt, shade_amt, 255))
+        rot_img.blit(shade, (0, 0), special_flags=pygame.BLEND_RGBA_MULT)
 
         # render the blade
         surf.blit(rot_img, (location[0] - rot_img.get_width() // 2, location[1] - rot_img.get_height() // 2))
@@ -293,7 +293,7 @@ class GrassTile:
     # render the tile's image based on its current state and return the data
     def render_tile(self, render_shadow=False):
         # make a new padded surface (to fit blades spilling out of the tile)
-        surf = pygame.Surface((self.size + self.padding * 2, self.size + self.padding * 2))
+        surf = pygame.Surface((self.size + self.padding * 2, self.size + self.padding * 2), pygame.SRCALPHA)
         surf.set_colorkey((0, 0, 0))
 
         # use custom_blade_data if it's active (uncached). otherwise use the base data (cached).
@@ -304,7 +304,7 @@ class GrassTile:
 
         # render the shadows of each blade if applicable
         if render_shadow:
-            shadow_surf = pygame.Surface(surf.get_size())
+            shadow_surf = pygame.Surface(surf.get_size(), pygame.SRCALPHA)
             shadow_surf.set_colorkey((0, 0, 0))
             for blade in self.blades:
                 pygame.draw.circle(shadow_surf, self.gm.ground_shadow[1], (blade[0][0] + self.padding, blade[0][1] + self.padding), self.gm.ground_shadow[0])

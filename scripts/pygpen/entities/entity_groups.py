@@ -43,10 +43,17 @@ class EntityGroups(ElementSingleton):
                 for entity in self.groups[group].copy():
                     kill = entity.update(dt)
                     if kill:
-                        self.groups[group].remove(entity)
+                        try:
+                            self.groups[group].remove(entity)
+                        except ValueError:
+                            # entities may try to remove themselves for other reasons, so the error needs to be caught
+                            pass
                         # delete from quads if applicable
-                        if group in self.quad_groups:
-                            self.equads.delete(entity)
+                        try:
+                            if group in self.quad_groups:
+                                self.equads.delete(entity)
+                        except ValueError:
+                            pass
         else:
             for group in self.groups:
                 self.update(group, unlock=False)

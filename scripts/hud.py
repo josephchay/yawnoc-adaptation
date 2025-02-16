@@ -5,6 +5,9 @@ import pygame
 from . import pygpen as pp
 
 from .pause import PauseMenu
+from .tutorial import Tutorial
+from .util import format_time
+from .const import DEMO
 
 class HUD(pp.ElementSingleton):
     def __init__(self):
@@ -21,14 +24,12 @@ class HUD(pp.ElementSingleton):
 
         self.boss = None
 
-        self.coverage_mask_src = pygame.Surface(self.e['Game'].display.get_size(), pygame.SRCALPHA)
-        self.machine_mask_src = pygame.Surface(self.e['Game'].display.get_size(), pygame.SRCALPHA)
-
         self.hide_ui = False
 
         self.guide_target = None
 
         self.pause_menu = PauseMenu()
+        self.tutorial = Tutorial()
 
     def new_team_alert(self, member):
         self.team_alert = 2.5
@@ -40,19 +41,22 @@ class HUD(pp.ElementSingleton):
         if self.e['Input'].pressed('hide_ui'):
             self.hide_ui = not self.hide_ui
         self.pause_menu.update()
+        self.tutorial.update()
 
     def render(self):
         if not self.hide_ui:
+            self.tutorial.render()
+
             if self.guide_target:
                 start_pos = self.e['Game'].player.center
                 distance = pp.game_math.distance(self.guide_target, start_pos)
                 if distance > 30:
                     angle = math.atan2(self.guide_target[1] - start_pos[1], self.guide_target[0] - start_pos[0])
-                    arrow_base = pp.utils.game_math.advance(list(start_pos), angle, 20 + math.sin(self.e['Window'].time * 6) * 2.5)
+                    arrow_base = pp.utils.game_math.advance(list(start_pos), angle, 20 + math.sin(self.e['Window'].time * 9) * 2.5)
                     arrow_points = [
-                        pp.utils.game_math.advance(list(arrow_base), angle, 6),
-                        pp.utils.game_math.advance(list(arrow_base), angle + math.pi / 2, 2),
-                        pp.utils.game_math.advance(list(arrow_base), angle - math.pi / 2, 2),
+                        pp.utils.game_math.advance(list(arrow_base), angle, 8),
+                        pp.utils.game_math.advance(list(arrow_base), angle + math.pi / 2, 3),
+                        pp.utils.game_math.advance(list(arrow_base), angle - math.pi / 2, 3),
                     ]
                     for offset in [(0, 0), (1, 0), (0, 1), (-1, 0), (0, -1)]:
                         color = (38, 27, 46)
@@ -62,9 +66,13 @@ class HUD(pp.ElementSingleton):
                             z = 9981
                         render_points = [(p[0] + offset[0] - self.e['Game'].camera[0], p[1] + offset[1] - self.e['Game'].camera[1]) for p in arrow_points]
                         self.e['Renderer'].renderf(pygame.draw.polygon, color, render_points, z=z, group='ui')
-                    self.guide_target = None
+                self.guide_target = None
 
             score_text = f'Wave: {self.e["State"].wave}'
+            if DEMO:
+                score_text = f'Wave: {self.e["State"].wave} / 10'
+                if self.e['State'].season != 'summer':
+                    score_text = f'Wave: 0 / 10'
 
             self.swap_offset += -self.swap_offset * self.e['Window'].dt * 10
             if self.swap_offset < 0.5:
@@ -86,24 +94,27 @@ class HUD(pp.ElementSingleton):
                 self.team_alert_offsets[1] += (-100 - self.team_alert_offsets[1]) * self.e['Window'].dt * 5
 
             if self.team_alert_offsets[1] > -50:
-                self.e['Renderer'].renderf(pygame.draw.line, (254, 252, 211), (self.e['Game'].display.get_width() - self.team_alert_offsets[0], 100), (self.e['Game'].display.get_width() - self.team_alert_offsets[1], 100), z=10001, group='ui')
-                self.e['Renderer'].renderf(pygame.draw.line, (38, 27, 46), (self.e['Game'].display.get_width() - self.team_alert_offsets[0] + 1, 101), (self.e['Game'].display.get_width() - self.team_alert_offsets[1] - 1, 101), z=10001, group='ui')
+                self.e['Renderer'].renderf(pygame.draw.line, (254, 252, 211), (self.e['Game'].display.get_width() - self.team_alert_offsets[0], 101), (self.e['Game'].display.get_width() - self.team_alert_offsets[1], 101), z=10003, group='ui')
+                self.e['Renderer'].renderf(pygame.draw.line, (38, 27, 46), (self.e['Game'].display.get_width() - self.team_alert_offsets[0] + 1, 102), (self.e['Game'].display.get_width() - self.team_alert_offsets[1] - 1, 102), z=10001, group='ui')
 
             if self.e['Game'].player.dead:
-                self.e['Text']['large_font'].renderzb('Dead!', (self.e['Game'].display.get_width() / 2 - self.e['Text']['large_font'].width('Dead!') / 2, 40), color=(254, 252, 211), bgcolor=(38, 27, 46), z=10102, group='ui')
-                self.e['Text']['small_font'].renderzb(score_text, (self.e['Game'].display.get_width() / 2 - self.e['Text']['small_font'].width(score_text) / 2, 60), color=(254, 252, 211), bgcolor=(38, 27, 46), z=10102, group='ui')
-                self.e['Text']['small_font'].renderzb('to return to menu...', (self.e['Game'].display.get_width() / 2 - self.e['Text']['small_font'].width('to return to menu...') / 2 + 5, 72), color=(254, 252, 211), bgcolor=(38, 27, 46), z=10102, group='ui')
-                self.e['Renderer'].blit(self.e['Assets'].images['misc']['r'], (148, 69), z=10102, group='ui')
+                if (not self.e['PauseMenu'].paused) or (self.e['PauseMenu'].mode != 'dead'):
+                    if not self.e['PauseMenu'].death_consumed:
+                        self.e['PauseMenu'].pause(mode='dead')
 
             elif not self.e['State'].title:
                 self.e['Game'].minimap.render()
 
                 health_surf = pygame.Surface((self.e['Game'].player.health / self.e['Game'].player.max_health * 94, 10))
                 health_surf.blit(self.e['Assets'].images['misc']['health'], (health_surf.get_width() - 94, 0))
+                shield_surf = pygame.Surface((min(1, self.e['Game'].player.total_shield / self.e['Game'].player.max_health) * 94, 4))
+                shield_surf.blit(self.e['Assets'].images['misc']['shield'], (shield_surf.get_width() - 94, 0))
                 if self.e['Game'].player.hurt > 0.99:
                     health_surf.fill((254, 252, 211))
+                    shield_surf.fill((254, 252, 211))
                 self.e['Renderer'].blit(self.e['Assets'].images['misc']['health_bar'], (4 - self.e['State'].left_inv_offset, 4), z=9998, group='ui')
                 self.e['Renderer'].blit(health_surf, (9 - self.e['State'].left_inv_offset, 12), z=9997, group='ui')
+                self.e['Renderer'].blit(shield_surf, (9 - self.e['State'].left_inv_offset, 16), z=9997.5, group='ui')
 
                 tl_hud_offset = 0
                 if self.e['Game'].player.partner[0]:
@@ -129,10 +140,19 @@ class HUD(pp.ElementSingleton):
                     self.scrap_spin = 0
                 scrap_img = pygame.transform.rotate(self.e['Assets'].images['misc']['scrap'], self.scrap_spin)
                 scrap_img.set_colorkey((0, 0, 0))
-                self.e['Renderer'].blit(scrap_img, (7 - scrap_img.get_width() / 2 - self.e['State'].left_inv_offset, 48 - scrap_img.get_height() / 2 + tl_hud_offset), z=9997, group='ui')
+                self.e['Renderer'].blit(scrap_img, (7 - scrap_img.get_width() / 2 - self.e['State'].left_inv_offset, 49 - scrap_img.get_height() / 2 + tl_hud_offset), z=9997, group='ui')
                 self.e['Text']['small_font'].renderzb(f'{self.e["State"].scrap:,}', (13 - self.e['State'].left_inv_offset, 45 + tl_hud_offset), color=(254, 252, 211), bgcolor=(38, 27, 46), offset=(0, 0), group='ui', z=9997)
 
                 self.e['Text']['small_font'].renderzb(score_text, (5 - self.e['State'].left_inv_offset, 56 + tl_hud_offset), color=(254, 252, 211), bgcolor=(38, 27, 46), offset=(0, 0), group='ui', z=9998)
+
+                timer_text = format_time(int(self.e['State'].difficulty))
+                difficulty_color = [(254, 252, 211), (238, 209, 108), (228, 103, 71), (191, 60, 96), (125, 43, 88)][min(4, int(self.e['State'].difficulty // (60 * 6)))]
+                self.e['Text']['small_font'].renderzb(timer_text, (5 - self.e['State'].left_inv_offset, 67 + tl_hud_offset), color=difficulty_color, bgcolor=(38, 27, 46), offset=(0, 0), group='ui', z=9998)
+
+                if self.e['State'].upgrade_stat('potato_farmer'):
+                    potato_img = self.e['Assets'].images['misc']['potato']
+                    self.e['Renderer'].blit(potato_img, (7 - potato_img.get_width() / 2 - self.e['State'].left_inv_offset, 83 - potato_img.get_height() / 2 + tl_hud_offset), z=9997, group='ui')
+                    self.e['Text']['small_font'].renderzb(f'{self.e["State"].potatoes:,}', (13 - self.e['State'].left_inv_offset, 78 + tl_hud_offset), color=(254, 252, 211), bgcolor=(38, 27, 46), offset=(0, 0), group='ui', z=9997)
 
                 if self.e['Game'].player.hurt:
                     hurt_fill = pygame.Surface(self.e['Game'].display.get_size()).convert_alpha()
@@ -154,6 +174,10 @@ class HUD(pp.ElementSingleton):
                         boss_max_health = self.boss.max_health
                         hurt = self.boss.hurt
                         boss_name = '???'
+                        if self.boss.type == 'eye':
+                            boss_name = 'World\'s Eye'
+                        if self.boss.type == 'eye_small':
+                            boss_name = 'Satellite Eye'
                     beacon_health_border = self.e['Assets'].images['misc']['boss_health']
                     self.e['Renderer'].blit(beacon_health_border, (self.e['Game'].display.get_width() / 2 - beacon_health_border.get_width() / 2, self.e['Game'].display.get_height() - 13), z=9998, group='ui')
                     health_surf = pygame.Surface((boss_health / boss_max_health * 122, 5))
@@ -168,7 +192,7 @@ class HUD(pp.ElementSingleton):
                 white = pygame.Surface(self.e['Game'].display.get_size())
                 white.fill((254, 252, 211))
                 white.set_alpha(int(min(1, self.flash) * 255))
-                self.e['Renderer'].blit(white, (0, 0), z=10000, group='ui')
+                self.e['Renderer'].blit(white, (0, 0), z=10011, group='ui')
 
             self.boss = None
 
@@ -180,13 +204,10 @@ class HUD(pp.ElementSingleton):
                 render_cursor = False
             if not any(self.e['Controllers'].read_stick('aim_x', 'aim_y')):
                 render_cursor = False
+        if self.hide_ui:
+            render_cursor = False
         if render_cursor:
-            self.e['Renderer'].blit(self.e['Assets'].images['misc']['cursor'], (self.e['Game'].mpos[0] - 4, self.e['Game'].mpos[1] - 4), z=10002, group='ui')
-
-        # handle hidden machines
-        coverage_mask = pygame.mask.from_surface(self.coverage_mask_src)
-        machine_mask = pygame.mask.from_surface(self.machine_mask_src)
-        merged_surf = machine_mask.overlap_mask(coverage_mask, (0, 0)).to_surface(setcolor=(254, 252, 211, 210), unsetcolor=(0, 0, 0, 0))
-        self.e['Renderer'].blit(merged_surf, (0, 0), z=9999)
-        self.coverage_mask_src.fill((0, 0, 0, 0))
-        self.machine_mask_src.fill((0, 0, 0, 0))
+            z_offset = 0
+            if self.e['Game'].player.dead or (self.e['PauseMenu'].mode == 'victory'):
+                z_offset = 1000
+            self.e['Renderer'].blit(self.e['Assets'].images['misc']['cursor'], (self.e['Game'].mpos[0] - 4, self.e['Game'].mpos[1] - 4), z=10002 + z_offset, group='ui')

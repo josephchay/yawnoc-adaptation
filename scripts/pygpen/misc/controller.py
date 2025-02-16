@@ -1,14 +1,17 @@
+import os
+
 import platform
 import math
 
 import pygame
 
 from ..utils.elements import ElementSingleton
-from ..utils.io import read_f
+from ..utils.io import read_json, write_json
 
 import pygame._sdl2.controller
 
 CONTROLLER_INPUT_IDS = {
+    'start': (pygame.CONTROLLER_BUTTON_START, 'button'),
     'back': (pygame.CONTROLLER_BUTTON_BACK, 'button'),
     'leftx': (pygame.CONTROLLER_AXIS_LEFTX, 'axis'),
     'lefty': (pygame.CONTROLLER_AXIS_LEFTY, 'axis'),
@@ -20,6 +23,10 @@ CONTROLLER_INPUT_IDS = {
     'righttrigger': (pygame.CONTROLLER_AXIS_TRIGGERRIGHT, 'axis'),
     'a': (pygame.CONTROLLER_BUTTON_A, 'button'),
     'b': (pygame.CONTROLLER_BUTTON_B, 'button'),
+    'hatup': (pygame.CONTROLLER_BUTTON_DPAD_UP, 'button'),
+    'hatdown': (pygame.CONTROLLER_BUTTON_DPAD_DOWN, 'button'),
+    'hatright': (pygame.CONTROLLER_BUTTON_DPAD_RIGHT, 'button'),
+    'hatleft': (pygame.CONTROLLER_BUTTON_DPAD_LEFT, 'button'),
 }
 
 PLATFORM_RAW = platform.system().lower()
@@ -86,18 +93,43 @@ class Controller:
     def __init__(self, parent, joystick):
         self.parent = parent
         self.joystick = joystick
-        self.controller = pygame._sdl2.controller.Controller.from_joystick(joystick)
 
         self.guid = self.joystick.get_guid()
+
+        self.controller = None
+        try:
+            self.controller = pygame._sdl2.controller.Controller.from_joystick(joystick)
+        except Exception as e:
+            print(e)
+            print('unknown controller', self.guid)
+
+        if self.controller:
+            # generate config if it doesn't exist and apply config if it's activated
+            config = {'set_to_1_to_activate': 0}
+            config.update(self.controller.get_mapping())
+            if not os.path.isdir('settings'):
+                os.mkdir('settings')
+            try:
+                old_config = read_json(f'settings/controller_{self.guid}.json')
+            except FileNotFoundError:
+                old_config = {}
+            if ('set_to_1_to_activate' in old_config) and old_config['set_to_1_to_activate']:
+                del old_config['set_to_1_to_activate']
+                self.controller.set_mapping(old_config)
+            else:
+                write_json(f'settings/controller_{self.guid}.json', config)
 
         self.reload_bindings()
 
     @property
     def name(self):
-        return self.controller.name
+        return self.controller.name if self.controller else 'unknown'
     
     def reload_bindings(self):
-        self.bindings = {self.parent.name_mapping[key]: SDL2Binding(self.controller, key) for key in self.parent.name_mapping}
+        if self.controller:
+            self.bindings = {self.parent.name_mapping[key]: SDL2Binding(self.controller, key) for key in self.parent.name_mapping}
+        else:
+            self.bindings = {}
 
     def update(self):
         for binding in self.bindings.values():
@@ -124,6 +156,14 @@ class Controller:
     def pressed(self, key):
         if key in self.bindings:
             return self.bindings[key].pressed
+        
+    def nav_pressed(self, key, negation_key):
+        if self.pressed(key) and not (self.holding(negation_key) or self.holding_neg(negation_key)):
+            return True
+        
+    def nav_pressed_neg(self, key, negation_key):
+        if self.pressed_neg(key) and not (self.holding(negation_key) or self.holding_neg(negation_key)):
+            return True
         
     def released(self, key):
         if key in self.bindings:
@@ -162,6 +202,10 @@ class Controllers(ElementSingleton):
         pygame._sdl2.controller.init()
 
     @property
+    def inv_name_mapping(self):
+        return {self.name_mapping[k]: k for k in self.name_mapping}
+
+    @property
     def name(self):
         if self.last:
             return self.last.name
@@ -193,6 +237,14 @@ class Controllers(ElementSingleton):
         if self.last:
             return self.last.holding(key)
         
+    def nav_pressed(self, key, negation_key):
+        if self.last:
+            return self.last.nav_pressed(key, negation_key)
+    
+    def nav_pressed_neg(self, key, negation_key):
+        if self.last:
+            return self.last.nav_pressed_neg(key, negation_key)
+        
     def pressed_neg(self, key):
         if self.last:
             return self.last.pressed_neg(key)
@@ -210,10 +262,14 @@ class Controllers(ElementSingleton):
             return self.last.raw(key)
 
     def add(self, event):
-        joystick = pygame.joystick.Joystick(event.device_index)
-        new_controller = Controller(self, joystick)
-        self.controllers[joystick.get_instance_id()] = new_controller
-        self.last = new_controller
+        try:
+            joystick = pygame.joystick.Joystick(event.device_index)
+            new_controller = Controller(self, joystick)
+            if new_controller.controller:
+                self.controllers[joystick.get_instance_id()] = new_controller
+                self.last = new_controller
+        except pygame.error:
+            print('pygame.error when adding a controller!')
 
     def remove(self, event):
         if event.instance_id in self.controllers:

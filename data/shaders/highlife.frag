@@ -44,17 +44,17 @@ void main() {
         if ((neighbors < 2) || (neighbors > 3)) {
             f_color = vec4(0.0, 0.0, 0.0, 1.0);
         } else {
-            f_color = vec4(neighbor_type, 0.0, 0.0, 1.0);
+            f_color = vec4(neighbor_type, old_px.g, 0.0, 1.0);
         }
     } else {
         if ((neighbors == 3) || (neighbors == 5) || (neighbors == 6)) {
-            f_color = vec4(neighbor_type, 0.0, 0.0, 1.0);
+            f_color = vec4(neighbor_type, 1.0, 0.0, 1.0);
         } else {
             f_color = vec4(0.0, 0.0, 0.0, 1.0);
         }
     }
 
     if (old_px.r >= 251.5 / 255.0) {
-        f_color = vec4(1.0, 0.0, 0.0, 1.0);
+        f_color = vec4(old_px.r, 0.0, 0.0, 1.0);
     }
 }

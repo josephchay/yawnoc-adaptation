@@ -6,7 +6,7 @@ from ..utils.elements import ElementSingleton, Element
 from ..utils.gfx import palette_swap, clip
 from ..utils.io import recursive_file_op
 
-def load_font_img(path, font_color=(255, 255, 255)):
+def load_font_img(path, font_color=(255, 255, 255), double_outline=None):
     fg_color = (255, 0, 0)
     bg_color = (0, 0, 0)
     font_img = pygame.image.load(path).convert_alpha()
@@ -16,7 +16,17 @@ def load_font_img(path, font_color=(255, 255, 255)):
     letter_spacing = []
     for x in range(font_img.get_width()):
         if font_img.get_at((x, 0))[0] == 127:
-            letters.append(clip(font_img, pygame.Rect(last_x, 0, x - last_x, font_img.get_height())))
+            char_img = clip(font_img, pygame.Rect(last_x, 0, x - last_x, font_img.get_height()))
+            if double_outline:
+                outlined_img = pygame.Surface((char_img.get_width() + 2, char_img.get_height() + 3))
+                char_img.set_colorkey((0, 0, 0))
+                silhouette = pygame.mask.from_surface(char_img).to_surface(setcolor=double_outline, unsetcolor=bg_color)
+                silhouette.set_colorkey(bg_color)
+                for offset in [(1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (-1, 1), (0, 2)]:
+                    outlined_img.blit(silhouette, (1 + offset[0], 1 + offset[1]))
+                outlined_img.blit(char_img, (1, 1))
+                char_img = outlined_img
+            letters.append(char_img)
             letter_spacing.append(x - last_x)
             last_x = x + 1
         x += 1
@@ -36,6 +46,11 @@ class Text(ElementSingleton):
             self.path = path
         if self.path:
             self.fonts = recursive_file_op(self.path, Font, filetype='png')
+
+        for font in list(self.fonts):
+            doubled_font = Font(self.fonts[font].path, double_outline=(38, 27, 46))
+            self.fonts[f'{font}_double'] = doubled_font
+            self.fonts[font].double_link = doubled_font
         
     def __getitem__(self, key):
         return self.fonts[key]
@@ -59,16 +74,18 @@ class PreppedText:
         return ('<PreppedText:' + str(self.width) + 'x' + str(self.height) + '> ' + self.text).replace('\n', '\\n')
 
 class Font(Element):
-    def __init__(self, path, color=(255, 255, 255)):
+    def __init__(self, path, color=(255, 255, 255), double_outline=None):
         super().__init__()
+        self.path = path
         self.base_color = color
-        self.letters, self.letter_spacing, self.line_height = load_font_img(path, color)
+        self.letters, self.letter_spacing, self.line_height = load_font_img(path, color, double_outline=double_outline)
         self.color_cache = {color: self.letters}
-        self.font_order = ['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z','a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z','.','-',',',':','+','\'','!','?','0','1','2','3','4','5','6','7','8','9','(',')','/','_','=','\\','[',']','*','"','<','>',';', '%']
+        self.font_order = ['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z','a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z','.','-',',',':','+','\'','!','?','0','1','2','3','4','5','6','7','8','9','(',')','/','_','=','\\','[',']','*','"','<','>',';', '%', '&']
         self.font_map = {k: i for i, k in enumerate(self.font_order)}
         self.space_width = self.letter_spacing[0]
         self.base_spacing = 1
         self.line_spacing = 2
+        self.double_link = None
         
     def prep_color(self, color):
         new_letters = []
@@ -84,7 +101,10 @@ class Font(Element):
             if char == ' ':
                 text_width += self.space_width + self.base_spacing
             else:
-                text_width += self.letter_spacing[self.font_order.index(char)] + self.base_spacing
+                try:
+                    text_width += self.letter_spacing[self.font_order.index(char)] + self.base_spacing
+                except ValueError:
+                    text_width += self.letter_spacing[self.font_order.index('?')] + self.base_spacing
         return text_width
 
     def prep_text(self, text, line_width=0):
@@ -114,6 +134,7 @@ class Font(Element):
             if word[0] == '\n':
                 y += 1
                 x = 0
+                processed_text += '\n'
             else:
                 if x + word[1] > line_width:
                     processed_text += '\n'
@@ -131,6 +152,12 @@ class Font(Element):
         self.render(self.e['Renderer'], text, (loc[0] - offset[0], loc[1] - offset[1]), line_width=line_width, color=color, hide_chars=hide_chars, blit_kwargs={'group': group, 'z': z})
 
     def renderzb(self, text, loc, line_width=0, color=None, bgcolor=None, offset=(0, 0), group='default', z=0, hide_chars=0):
+        if self.double_link:
+            self.double_link.renderz(text, loc, line_width=line_width, color=color, offset=offset, hide_chars=hide_chars, group=group, z=z)
+        else:
+            self.renderzb_old(text, loc, line_width=0, color=None, bgcolor=None, offset=(0, 0), group='default', z=0, hide_chars=0)
+
+    def renderzb_old(self, text, loc, line_width=0, color=None, bgcolor=None, offset=(0, 0), group='default', z=0, hide_chars=0):
         for o in [(1, 0), (-1, 0), (0, 1), (0, -1)]:
             self.renderz(text, (loc[0] + o[0], loc[1] + o[1]), line_width=line_width, color=bgcolor, offset=offset, hide_chars=hide_chars, group=group, z=z - 1)
         self.renderz(text, loc, line_width=line_width, color=color, offset=offset, hide_chars=hide_chars, group=group, z=z)
@@ -163,8 +190,14 @@ class Font(Element):
         for i, char in enumerate(text):
             if char not in ['\n', ' ']:
                 if i >= hide_chars:
-                    surf.blit(letters[self.font_map[char]], (loc[0] + x_offset, loc[1] + y_offset), **blit_kwargs)
-                x_offset += self.letter_spacing[self.font_map[char]] + self.base_spacing
+                    try:
+                        surf.blit(letters[self.font_map[char]], (loc[0] + x_offset, loc[1] + y_offset), **blit_kwargs)
+                    except KeyError:
+                        surf.blit(letters[self.font_map['?']], (loc[0] + x_offset, loc[1] + y_offset), **blit_kwargs)
+                try:
+                    x_offset += self.letter_spacing[self.font_map[char]] + self.base_spacing
+                except KeyError:
+                    x_offset += self.letter_spacing[self.font_map['?']] + self.base_spacing
             elif char == ' ':
                 x_offset += self.space_width + self.base_spacing
             else:

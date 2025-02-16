@@ -8,7 +8,7 @@ from .pygpen import ElementSingleton, utils, data_structures
 
 from .particle_spawners import update_spawner
 
-from .npc import NPC
+from .const import FRENEMY_LEVELS
 
 TILES_AROUND = [(0, 0), (1, 0), (-1, 0), (0, -1), (1, -1), (-1, -1), (0, 1), (1, 1), (-1, 1)]
 TILE_N4 = [(1, 0), (-1, 0), (0, 1), (0, -1)]
@@ -33,21 +33,30 @@ N8_AUTOTILE_CONFIG = {
     (True, True, True, True, True, True, True, False): (0, 4),
 }
 
+ENTITY_CLASSES = {'npc': None, 'frenemy': None}
+
+# remove if it becomes circular
+# npc just needs to be imported so it links itself to ENTITY_CLASSES
+from . import npc
+
 AUTOTILE_GROUPS = {'grass', 'floorgrass', 'floorgrassdark'}
 RANDOMIZE_GROUPS = {'dirtvariants': (0.5, 4)}
-ENTITY_MAP = {(0, 0): (NPC, 'gary')}
+ENTITY_MAP = {(0, 0): ('npc', 'gary'), (0, 1): ('frenemy', 'jim'), (0, 2): ('frenemy', 'oswald'), (0, 3): ('frenemy', 'hazel'), (0, 4): ('npc', 'daisy'), (1, 0): ('npc', 'goat')}
 PARTICLE_MAP = {(0, 0): 'fire', (1, 0): 'smoke'}
 
 DECOR = {
     'summer': ['bush', 'stone', 'bush', 'stone', 'bush', 'stone', 'red_mushrooms'],
     'fall': ['leaves', 'stone', 'leaves', 'stone', 'leaves', 'stone', 'green_mushrooms'],
     'winter': ['stone', 'stone', 'stone', 'stone', 'brown_mushrooms'],
+    'void': [],
 }
 DECOR_SOURCES = {'dirtvariants'}
 
 MAP_NAMES = {
     'summer': ['fortress', 'corners', 'quads', 'river'],
-    'fall': ['fall_1'],
+    'fall': ['fall_1', 'fall_2', 'fall_3', 'fall_4'],
+    'winter': ['winter_1', 'winter_2', 'winter_3', 'winter_4'],
+    'void': ['void_1', 'void_2', 'void_3', 'void_4'],
 }
 
 SHADOW_CACHE = {}
@@ -87,6 +96,20 @@ class ShadowTile:
         if not self.parent.e['Machines'].high_life:
             self.parent.e['Renderer'].blit(self.img, rpos, z=z)
 
+class EdgeTile:
+    def __init__(self, parent, img, pos):
+        self.parent = parent
+        self.pos = pos
+        self.img = img
+
+    def render(self, offset):
+        rpos = (self.pos[0] * self.parent.tile_size - offset[0], self.pos[1] * self.parent.tile_size - offset[1])
+
+        z = -5.5
+
+        if not self.parent.e['Machines'].high_life:
+            self.parent.e['Renderer'].blit(self.img, rpos, z=z)
+
 class Decor:
     def __init__(self, parent, category, subtype, rect):
         self.parent = parent
@@ -111,6 +134,8 @@ class Decor:
             img = self.e['Assets'].spritesheets['decor']['assets'][self.subtype]
             self.e['Renderer'].blit(img, (self.rect.x - self.e['Game'].camera[0], self.rect.y - self.e['Game'].camera[1]), z=5990 + self.rect.bottom / self.parent.tile_size)
         if self.category == 'ground_decor':
+            if self.e['Transition'].floor_hole_radius and (pp.game_math.distance(self.rect.center, self.e['Game'].player.center) <= self.e['Transition'].floor_hole_radius):
+                return
             img = self.e['Assets'].images['decor'][self.subtype]
             shadow_img = self.e['Assets'].images['misc']['shadow_medium']
             self.e['Renderer'].blit(img, (self.rect.x - self.e['Game'].camera[0], self.rect.y - self.e['Game'].camera[1]), z=self.rect.bottom / self.parent.tile_size - 0.5)
@@ -118,13 +143,10 @@ class Decor:
         if self.category[:7] == 'foliage':
             tree_anim = self.e['Assets'].foliage.foliage[self.category][self.subtype]
             self.opacity = min(255, self.opacity + self.e['Window'].dt * 500)
-            if self.rect.colliderect(self.e['Game'].player.rect):
-                self.opacity = max(25, self.opacity - self.e['Window'].dt * 2000)
-            growth = 8
-            tree_surf = tree_anim.prerender(m_clock=self.e['Window'].time, seed=self.rect.x + self.rect.y, opacity=self.opacity, growth=growth)
-            self.e['Renderer'].blit(tree_surf, (self.rect.x - self.e['Game'].camera[0] - growth, self.rect.y - self.e['Game'].camera[1] - growth), z=5990 + self.rect.bottom / self.parent.tile_size)
-            # used for showing hidden machines later
-            self.e['HUD'].coverage_mask_src.blit(tree_surf, (self.rect.x - self.e['Game'].camera[0] - growth, self.rect.y - self.e['Game'].camera[1] - growth))
+            for rect in self.e['Tilemap'].tree_visibility_rects:
+                if self.rect.colliderect(rect):
+                    self.opacity = max(25, self.opacity - self.e['Window'].dt * 2000)
+            self.e['Renderer'].renderf(tree_anim.render, (self.rect.x - self.e['Game'].camera[0], self.rect.y - self.e['Game'].camera[1]), m_clock=self.e['Window'].time, seed=abs(self.rect.x + self.rect.y) ** 0.8, opacity=self.opacity, z=5990 + self.rect.bottom / self.parent.tile_size + self.rect.x / 999999)
 
 class Tile:
     def __init__(self, parent, tile_type, pos, wall=False, variant=None, z_offset=0, overhang=False):
@@ -136,6 +158,13 @@ class Tile:
         self.overhang = overhang
 
         self.variant = variant
+
+        if self.overhang:
+            if self.variant:
+                img = self.parent.e['Assets'].spritesheets[self.type]['assets'][self.variant]
+            else:
+                img = self.parent.e['Assets'].images['tiles'][self.type]
+            self.parent.e['VisibilityMarkers'].insert(img, self.rect.topleft)
 
         if self.type in RANDOMIZE_GROUPS:
             if random.random() < RANDOMIZE_GROUPS[self.type][0]:
@@ -151,28 +180,41 @@ class Tile:
         z = -99999
         if self.wall:
             z = self.pos[1] + 1
+        if self.overhang:
+            z = self.pos[1] + 10
         z += self.z_offset
 
         if self.parent.e['Machines'].high_life:
-            z = -10
-            if self.pos in self.parent.solids:
-                img = self.parent.e['Assets'].images['tiles']['hl_wall']
-            elif self.pos not in self.parent.gaps:
-                img = self.parent.e['Assets'].images['tiles']['hl_square']
-            else:
+            img = None
+            if self.pos in self.parent.gaps:
                 img = self.parent.e['Assets'].images['tiles']['hl_gap']
+            if (self.pos not in self.parent.gaps) and (self.pos not in self.parent.solids):
+                img = self.parent.e['Assets'].images['tiles']['hl_square']
+            preserve_z = False
+            if self.type[:5] == 'grass':
+                img = self.parent.e['Assets'].spritesheets['grassvoid']['assets'][self.variant]
+                preserve_z = True
+            if self.type == 'special':
+                if (self.variant[1] == 1) and (self.variant[0] != 1):
+                    img = self.parent.e['Assets'].spritesheets['special']['assets'][(4, 1)]
+                    preserve_z = True
+            if not preserve_z:
+                z = -10
+
             timer = max(0, self.parent.e['Machines'].high_life_time - 1.5)
             draw_number = True
             if 0 < timer < 2.5:
                 dis = utils.game_math.distance(self.parent.e['HighlifeMap'].center, (self.pos[0] * self.parent.tile_size, self.pos[1] * self.parent.tile_size))
                 if dis > (max(self.parent.dimensions) * 1.5 * self.parent.tile_size + 24) * timer:
-                    img = self.parent.e['Assets'].images['tiles']['hl_none']
+                    if (self.type[:10] == 'floorgrass') or (self.type == 'dirtvariants'):
+                        img = self.parent.e['Assets'].images['tiles']['hl_none']
                 draw_number = False
                 if timer > 1:
                     if dis < (max(self.parent.dimensions) * 1.5 * self.parent.tile_size + 24) * (timer * 0.5 - 0.5):
                         draw_number = True
             if not timer:
-                img = self.parent.e['Assets'].images['tiles']['hl_none']
+                if (self.type[:10] == 'floorgrass') or (self.type == 'dirtvariants'):
+                    img = self.parent.e['Assets'].images['tiles']['hl_none']
                 draw_number = False
             if draw_number and (not any([pos in self.parent.solids for pos in [self.pos, (self.pos[0] - 1, self.pos[1]), (self.pos[0], self.pos[1] - 1)]])):
                 if self.pos[1] == self.parent.dimensions[1] // 2:
@@ -190,10 +232,14 @@ class Tile:
                 img = self.parent.e['Assets'].spritesheets[self.type]['assets'][self.variant]
             else:
                 img = self.parent.e['Assets'].images['tiles'][self.type]
-            
-            if self.overhang:
-                self.parent.e['HUD'].coverage_mask_src.blit(img, rpos)
-        self.parent.e['Renderer'].blit(img, rpos, z=z)
+
+        if self.parent.e['State'].season == 'void':
+            if self.pos in self.parent.gaps:
+                img = self.parent.e['Assets'].images['tiles']['hl_gap']
+                z = -10
+
+        if img:
+            self.parent.e['Renderer'].blit(img, rpos, z=z)
 
 class Tilemap(ElementSingleton):
     def __init__(self):
@@ -205,6 +251,8 @@ class Tilemap(ElementSingleton):
 
         self.pathfinder = Pathfind(self)
 
+        self.tree_visibility_rects = []
+
         self.load_map('fortress')
 
     def load_random_map(self):
@@ -215,15 +263,26 @@ class Tilemap(ElementSingleton):
         except FileNotFoundError:
             self.e['Game'].restart()
 
+    def load_boss_map(self):
+        try:
+            map_choice = 'void_5'
+            self.load_map(map_choice)
+            return map_choice
+        except FileExistsError:
+            self.e['Game'].restart()
+
     def clear(self):
         self.floor = {}
         self.walls = {}
         self.solids = {}
         self.gaps = {}
         self.shadows = {}
+        self.edges = {}
         self.decor_block = {}
         self.particle_spawners = []
         self.decor_quads = data_structures.Quads(self.tile_size * 3)
+
+        self.e['VisibilityMarkers'].reset()
 
         self.spawn = (300, 300)
         self.respawn = (300, 300)
@@ -267,11 +326,31 @@ class Tilemap(ElementSingleton):
             if tile['group'] in {'foliage', 'foliagefall', 'foliagewinter'}:
                 decor = Decor(self, tile['group'], tile_id, pygame.Rect(tile['pos'][0], tile['pos'][1], *img.get_size()))
                 self.decor_quads.add_raw(decor, decor.rect, tag=True)
+
+                # log blocker for visibility marker masking
+                try:
+                    anim = self.e['Assets'].foliage.foliage[tile['group']][tile_id]
+                    self.e['VisibilityMarkers'].insert(anim.prerender(m_clock=0, seed=0, growth=0), decor.rect.topleft)
+                except KeyError:
+                    pass
             
             if tile['group'] == 'entities':
                 if tile_id in ENTITY_MAP:
-                    entity = ENTITY_MAP[tile_id][0](ENTITY_MAP[tile_id][1], tile['pos'])
-                    self.e['EntityGroups'].add(entity, 'entities')
+                    cls = ENTITY_MAP[tile_id][0]
+                    entity_type = ENTITY_MAP[tile_id][1]
+                    group = 'entities'
+                    if cls == 'frenemy':
+                        group = 'frenemies'
+                        # frenemies only appear in camp after beating them in their associated wave
+                        if self.e['State'].record < FRENEMY_LEVELS[entity_type]:
+                            continue
+                        # don't spawn the frenemy if they're already following the player
+                        if self.e['Game'].player.partner[0]:
+                            partner = self.e['Game'].player.partner[0]
+                            if partner.type == entity_type:
+                                continue
+                    entity = ENTITY_CLASSES[cls](entity_type, tile['pos'])
+                    self.e['EntityGroups'].add(entity, group)
             
             if tile['group'] == 'particles':
                 self.particle_spawners.append((PARTICLE_MAP[tile_id], tile['pos']))
@@ -337,7 +416,9 @@ class Tilemap(ElementSingleton):
                     if 'exit' in categories:
                         self.exit = (tile['pos'][0] * self.tile_size, tile['pos'][1] * self.tile_size)
                     if 'shop' in categories:
-                        self.shops.append((tile['pos'][0] * self.tile_size, tile['pos'][1] * self.tile_size))
+                        self.shops.append(((tile['pos'][0] * self.tile_size, tile['pos'][1] * self.tile_size), 'shop'))
+                    if 'alt_shop' in categories:
+                        self.shops.append(((tile['pos'][0] * self.tile_size, tile['pos'][1] * self.tile_size), 'alt_shop'))
                     if 'weapon' in categories:
                         self.weapon_shops.append((tile['pos'][0] * self.tile_size, tile['pos'][1] * self.tile_size))
                     if 'block_decor' in categories:
@@ -382,6 +463,9 @@ class Tilemap(ElementSingleton):
 
         self.generate_shadows()
 
+        if self.e['State'].season != 'void':
+            self.generate_edges()
+
     def closest_space(self, pos):
         loc = (int(pos[0] // self.tile_size), int(pos[1] // self.tile_size))
         if self.is_open_space(loc):
@@ -408,10 +492,35 @@ class Tilemap(ElementSingleton):
     def visible_solid(self, loc):
         if loc in self.solids:
             return (self.solids[loc].type, self.solids[loc].variant) != ('special', (3, 3))
+        
+    def generate_edges(self):
+        EDGE_MAP = {
+            ((-1, 0), (0, -1)): (0, 0),
+            ((0, -1), (1, 0)): (1, 0),
+            ((0, 1), (1, 0)): (2, 0),
+            ((-1, 0), (0, 1)): (3, 0),
+            ((-1, 0),): (0, 1),
+            ((0, -1),): (1, 1),
+            ((1, 0),): (2, 1),
+            ((0, 1),): (3, 1),
+        }
+
+        for x in range(self.dimensions[0]):
+            for y in range(self.dimensions[1]):
+                neighbors = []
+                for offset in TILE_N4:
+                    loc = (x + offset[0], y + offset[1])
+                    if loc in self.gaps:
+                        neighbors.append(offset)
+                neighbor_rule = tuple(sorted(neighbors))
+                if neighbor_rule in EDGE_MAP:
+                    edge_img = self.e['Assets'].spritesheets['edges']['assets'][EDGE_MAP[neighbor_rule]]
+                    edge_img.set_alpha(130)
+                    self.edges[(x, y)] = EdgeTile(self, edge_img, (x, y))
 
     def generate_shadows(self):
-        for y in range(self.dimensions[0]):
-            for x in range(self.dimensions[1]):
+        for x in range(self.dimensions[0]):
+            for y in range(self.dimensions[1]):
                 if self.visible_solid((x, y)) or ((x, y) in self.walls):
                     continue
 
@@ -487,6 +596,8 @@ class Tilemap(ElementSingleton):
             return True
         elif include_gaps and (loc in self.gaps):
             return True
+        elif not ((0 <= loc[0] < self.dimensions[0]) and (0 <= loc[1] < self.dimensions[1])):
+            return True
         return False
 
     def solids_around(self, pos_px, include_gaps=True):
@@ -499,6 +610,11 @@ class Tilemap(ElementSingleton):
             elif include_gaps and (check in self.gaps):
                 solids.append(self.gaps[check])
         return solids
+    
+    def in_bounds(self, pos):
+        if (pos[0] < 0) or (pos[1] < 0) or (pos[0] >= self.dimensions[0]) or (pos[1] >= self.dimensions[1]):
+            return False
+        return True
     
     def update(self):
         for spawner in self.particle_spawners:
@@ -514,11 +630,17 @@ class Tilemap(ElementSingleton):
                     self.floor[(x, y)].render(cam_r.topleft)
                 if (x, y) in self.shadows:
                     self.shadows[(x, y)].render(cam_r.topleft)
+                if (x, y) in self.edges:
+                    self.edges[(x, y)].render(cam_r.topleft)
                 if (x, y) in self.walls:
                     self.walls[(x, y)].render(cam_r.topleft)
                 if self.e['Machines'].high_life and ((x, y) in self.gaps):
                     self.gaps[(x, y)].render(cam_r.topleft)
-        
+                elif (self.e['State'].season == 'void') and ((x, y) in self.gaps):
+                    self.gaps[(x, y)].render(cam_r.topleft)
+
         if not self.e['Machines'].high_life:
             for decor in self.decor_quads.query(cam_r):
                 decor.render()
+        
+        self.tree_visibility_rects = []

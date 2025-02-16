@@ -1,3 +1,5 @@
+from copy import deepcopy
+
 from ..utils.gfx import palette_swap
 
 class Animation:
@@ -12,7 +14,7 @@ class Animation:
             config['paused'] = False
         if 'frames' not in config:
             config['frames'] = [0.1 for i in range(len(images))]
-        self.config = config
+        self.config = deepcopy(config)
         
         self.images = images
         if hard_copy:

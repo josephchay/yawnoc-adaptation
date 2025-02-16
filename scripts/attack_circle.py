@@ -14,8 +14,9 @@ class AttackCircle(pp.Element):
         self.origin = list(pos)
         self.damage = 1
 
-        self.circle_vfx = pp.vfx.Circle(list(pos), velocity=150, decay=0.9, width=6, radius=0, color=(191, 60, 96), z=5980)
-        self.circle_vfx_2 = pp.vfx.Circle(list(pos), velocity=150, decay=1.0, width=6, radius=0, color=(254, 252, 211), z=5979)
+        decay_scale = 1 / max(0.0001, (1 - self.e['State'].upgrade_stat('swordsmans_pendant')))
+        self.circle_vfx = pp.vfx.Circle(list(pos), velocity=130, decay=0.9 * decay_scale, width=6, radius=0, color=(191, 60, 96), z=5980)
+        self.circle_vfx_2 = pp.vfx.Circle(list(pos), velocity=130, decay=1.0 * decay_scale, width=6, radius=0, color=(254, 252, 211), z=5979)
 
     @property
     def rect(self):

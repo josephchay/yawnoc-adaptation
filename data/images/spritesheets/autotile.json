@@ -32,6 +32,7 @@
 		"grass": "basic",
 		"grassfall": "basic",
 		"grasswinter": "basic",
+		"grassvoid": "basic",
 		"floorgrass": "basic_with_corners",
 		"floorgrassfall": "basic_with_corners",
 		"floorgrasswinter": "basic_with_corners"

@@ -32,3 +32,9 @@ def palette_swap(surf, colors):
 def smooth_approach(val, target, slowness=1):
     val += (target - val) / slowness * min(elems['Window'].dt, slowness)
     return val
+
+def outline(target, surf, pos, color):
+    surf = surf.convert_alpha()
+    silhouette = pygame.mask.from_surface(surf).to_surface(setcolor=color, unsetcolor=(255, 0, 0, 0))
+    for offset in [(1, 0), (-1, 0), (0, 1), (0, -1)]:
+        target.blit(silhouette, (pos[0] + offset[0], pos[1] + offset[1]))

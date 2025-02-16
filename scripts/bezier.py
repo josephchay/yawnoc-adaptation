@@ -25,6 +25,24 @@ LINE_VFX = {
         'time_cap': True,
         'scroll_affected': True,
         'poly_fill': False,
+    },
+    'weapon_select_description': {
+        'points': [[6, 6], [0, 0], [6, -6], [72, -6], [96, 18]],
+        'color': (254, 252, 211),
+        'width': 1,
+        'speed': 4,
+        'time_cap': True,
+        'scroll_affected': True,
+        'poly_fill': False,
+    },
+    'weapon_select_description_long': {
+        'points': [[6, 6], [0, 0], [6, -6], [80, -6], [104, 18]],
+        'color': (254, 252, 211),
+        'width': 1,
+        'speed': 4,
+        'time_cap': True,
+        'scroll_affected': True,
+        'poly_fill': False,
     }
 }
 

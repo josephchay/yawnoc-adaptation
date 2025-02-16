@@ -1,7 +1,7 @@
 NUMERAL_BASE = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX']
 
 CONTROLLER_MAPPING = {
-    'back': 'pause',
+    'start': 'pause',
     'leftx': 'move_x',
     'lefty': 'move_y',
     'rightx': 'aim_x',
@@ -12,10 +12,14 @@ CONTROLLER_MAPPING = {
     'righttrigger': 'primary',
     'a': 'interact',
     'b': 'back',
+    'hatup': 'menu_up',
+    'hatdown': 'menu_down',
+    'hatright': 'menu_right',
+    'hatleft': 'menu_left',
 }
 
 CONTROLLER_MAPPING_SWAPPED = {
-    'back': 'pause',
+    'start': 'pause',
     'leftx': 'move_x',
     'lefty': 'move_y',
     'rightx': 'aim_x',
@@ -38,6 +42,11 @@ def nice_round(number, tail=2):
         else:
             break
     return number_str
+
+def format_time(seconds):
+    minutes = seconds // 60
+    seconds = seconds % 60
+    return f'{minutes:02}:{seconds:02}'
 
 def roman_numeral(number):
     out = ''

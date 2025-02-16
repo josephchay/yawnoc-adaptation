@@ -26,8 +26,6 @@ class Window(ElementSingleton):
         self.frame_log = []
         self.native_resolution = None
         
-        pygame.mixer.pre_init(channels=2, allowedchanges=pygame.AUDIO_ALLOW_FREQUENCY_CHANGE)
-        pygame.init()
         pygame.display.set_caption(caption)
         self.reload_display(self.dimensions, ignore_mgl=True)
         self.clock = pygame.time.Clock()
@@ -111,7 +109,7 @@ class Window(ElementSingleton):
             self.render_object.render(uniforms=uniforms)
         pygame.display.flip()
         self.clock.tick(self.fps_cap)
-        self.dt = min(time.time() - self.last_frame, self.dt_cap)
+        self.dt = max(0.0001, min(time.time() - self.last_frame, self.dt_cap))
         self.frame_log.append(self.dt)
         self.frame_log = self.frame_log[-60:]
         self.last_frame = time.time()

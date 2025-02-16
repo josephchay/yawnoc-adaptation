@@ -81,6 +81,6 @@ void main() {
     }
 
     if (old_px.r >= 251.5 / 255.0) {
-        f_color = vec4(old_px.r, 0.0, 0.0, 1.0);
+        f_color = vec4(old_px.r, 1.0, 0.0, 1.0);
     }
 }

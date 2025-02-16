@@ -2,7 +2,7 @@ import pygame
 
 from . import pygpen as pp
 
-AUTOMATA_SYSTEMS = ['cgol', 'highlife', 'brain', 'smoothlife']
+AUTOMATA_SYSTEMS = ['cgol', 'highlife', 'brain', 'lowdeath', 'blobell', 'blursed']
 
 class Automata(pp.ElementSingleton):
     def __init__(self, dimensions=(100, 100)):
