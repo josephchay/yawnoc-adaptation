@@ -1,0 +1,1 @@
+{"images": {}, "animations": {"idle": {"offset": [0, 0], "speed": 1.0, "loop": true, "paused": false, "frames": [0.1, 0.1, 0.1, 0.1, 0.1, 0.3, 0.1, 0.1, 0.1, 0.5]}}, "file_path": "data/images/entities/gary", "id": "gary", "centered": false, "offset": [0, 0], "colorkey": [0, 0, 0], "size": [57, 39], "group": "entity", "collide_with": [], "default": "idle"}

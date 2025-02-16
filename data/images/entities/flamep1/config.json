@@ -1,0 +1,1 @@
+{"images": {}, "animations": {"flamep1": {"offset": [0, 0], "speed": 1.0, "loop": true, "paused": false, "frames": [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]}}, "file_path": "data/images/entities/flamep1", "id": "flamep1", "centered": false, "offset": [0, 0], "colorkey": [0, 0, 0], "size": [1, 1], "group": "entity", "collide_with": [], "default": "flamep1"}

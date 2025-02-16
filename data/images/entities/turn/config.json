@@ -1,0 +1,1 @@
+{"images": {}, "animations": {"idle": {"offset": [0, 0], "speed": 1.0, "loop": false, "paused": false, "frames": [0.05, 0.05, 0.05, 0.05, 0.05, 0.05]}}, "file_path": "data/images/entities/turn", "id": "turn", "centered": true, "offset": [0, 0], "colorkey": [0, 0, 0], "size": [1, 1], "group": "entity", "collide_with": [], "default": "idle"}
