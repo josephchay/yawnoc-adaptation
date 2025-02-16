@@ -1,5 +1,7 @@
 # Yawnoc - DafluffyPotato
 
+![img.png](data/thumbnail-demo.png)
+
 ---
 
 ## Official Steam Game
