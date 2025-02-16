@@ -2,6 +2,7 @@ import pygame
 
 from . import pygpen as pp
 
+
 class Minimap(pp.ElementSingleton):
     def __init__(self):
         super().__init__()
@@ -12,7 +13,8 @@ class Minimap(pp.ElementSingleton):
 
     def update(self):
         self.minimap = self.e['Machines'].minimap.copy()
-        player_pos = (self.e['Game'].player.pos[0] // self.e['Tilemap'].tile_size, self.e['Game'].player.pos[1] // self.e['Tilemap'].tile_size)
+        player_pos = (int(self.e['Game'].player.pos[0] // self.e['Tilemap'].tile_size),
+                      int(self.e['Game'].player.pos[1] // self.e['Tilemap'].tile_size))
         self.minimap.set_at(player_pos, (131, 206, 62))
         if 'frenemies' in self.e['EntityGroups'].groups:
             for frenemy in self.e['EntityGroups'].groups['frenemies']:
