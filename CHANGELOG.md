@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   by converting the position of the player to `int`.
 
 ### Changed
-- Major updated code (Version 1.1) from DafluffyPotato's work 
+- Major updated code (Version 1.1.3) from DafluffyPotato's work 
   (obtained from game files from Steam game purchase: https://store.steampowered.com/app/2824730/Yawnoc/)
 
 ### Removed

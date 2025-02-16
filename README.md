@@ -2,6 +2,10 @@
 
 ---
 
+## Official Steam Game
+
+Visit [Steam Game Page](https://store.steampowered.com/app/2824730/Yawnoc/) for the official release of the game.
+
 ## Development
 
 ### Setup
