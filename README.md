@@ -18,7 +18,7 @@ Visit [Steam Game Page](https://store.steampowered.com/app/2824730/Yawnoc/) for 
 
 Clone the repository:
 ```bash
-git clone https://github.com/josephchay/yawnoc-pixel-game/
+git clone https://github.com/josephchay/yawnoc-pygame/
 ```
 
 Navigate to the project directory:
