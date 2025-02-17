@@ -26,6 +26,8 @@ Navigate to the project directory:
 cd yawnoc-pygame
 ```
 
+You may also want to create a virtual environment before installing dependencies.
+
 Install dependencies with:
 ```bash
 pip install -r requirements.txt
