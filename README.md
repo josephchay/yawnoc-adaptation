@@ -2,6 +2,10 @@
 
 ![Thumbnail Demo](data/thumbnail-demo.png)
 
+Destroy hordes of strange machines that have invaded the forest. 
+Yawnoc is a chaotic top-down shooter roguelite focused on immersion into the world of 
+Conway's Game of Life and other cellular automata.
+
 ---
 
 ## Official Steam Game
@@ -19,7 +23,7 @@ git clone https://github.com/josephchay/yawnoc-pixel-game/
 
 Navigate to the project directory:
 ```bash
-cd yawnoc-pixel-game
+cd yawnoc-pygame
 ```
 
 Create a virtual environment:
