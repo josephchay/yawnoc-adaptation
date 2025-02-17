@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Temporary fix for `TypeError: 'float' object cannot be interpreted as an integer` from minimap.py -
   by converting the position of the player to `int`.
+- Added `pygame.init()` method to avoid `pygame.error: video system not initialized` error.
 
 ### Changed
 

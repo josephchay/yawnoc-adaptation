@@ -105,6 +105,8 @@ class Player(pygpen.PhysicsEntity):
 class Game(pygpen.PygpenGame):
     def load(self):
         self.font_path = 'editor_assets/fonts' if os.path.exists('editor_assets/fonts') else None
+        pygame.init()
+
         pygpen.init((1280, 720),
                     spritesheet_path=level_editor_config['spritesheet_path'], 
                     input_path='editor_assets/level_editor_keys.json',
