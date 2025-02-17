@@ -1,6 +1,6 @@
 # Yawnoc - DafluffyPotato
 
-![img.png](data/thumbnail-demo.png)
+![Thumbnail Demo](data/thumbnail-demo.png)
 
 ---
 
@@ -10,7 +10,7 @@ Visit [Steam Game Page](https://store.steampowered.com/app/2824730/Yawnoc/) for 
 
 ## Development
 
-### Setup
+### Game
 
 Clone the repository:
 ```bash
@@ -30,4 +30,13 @@ pip install -r requirements.txt
 Run the game with:
 ```bash
 python main.py
+```
+
+### Level Editor
+
+The level editor is a separate tool that allows you to create and edit stage levels for the game.
+
+To run the level editor:
+```bash
+python level_editor.py
 ```
