@@ -1,4 +1,4 @@
-# Yawnoc - DafluffyPotato
+# Yawnoc (Adaptation) - DafluffyPotato
 
 ![Thumbnail Demo](data/thumbnail-demo.png)
 
@@ -8,7 +8,9 @@ Conway's Game of Life and other cellular automata.
 
 ---
 
-## Official Steam Game
+## Official Access
+
+Origin source code: https://www.patreon.com/dafluffypotato/posts/yawnoc-source-112140066?utm_medium=clipboard_copy&utm_source=copyLink&utm_campaign=postshare_fan&utm_content=web_share
 
 Visit [Steam Game Page](https://store.steampowered.com/app/2824730/Yawnoc/) for the official release of the game.
 
